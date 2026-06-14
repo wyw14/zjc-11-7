@@ -4,7 +4,7 @@
       "id": "mqcyembfew83gs",
       "title": "测试故事：星夜",
       "createdAt": 1781391334019,
-      "updatedAt": 1781391334019,
+      "updatedAt": 1781479563972,
       "entries": [
         {
           "id": "mqcyembnpscfw2",
@@ -12,6 +12,14 @@
           "content": "夜幕降临，繁星点点...",
           "order": 1,
           "createdAt": 1781391334019
+        }
+      ],
+      "comments": [
+        {
+          "id": "mqeexozoel2c2q",
+          "author": "????",
+          "content": "????????,????!",
+          "createdAt": 1781479563972
         }
       ],
       "totalChars": 12,
@@ -33,6 +41,7 @@
           "createdAt": 1781391443478
         }
       ],
+      "comments": [],
       "totalChars": 15,
       "participantCount": 1,
       "locked": false,

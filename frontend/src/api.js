@@ -19,7 +19,9 @@ export const api = {
   getStory: (id) => request.get(`/stories/${id}`),
   createStory: (data) => request.post('/stories', data),
   addEntry: (id, data) => request.post(`/stories/${id}/entries`, data),
-  resetStory: (id) => request.post(`/admin/stories/${id}/reset`)
+  resetStory: (id) => request.post(`/admin/stories/${id}/reset`),
+  getComments: (id) => request.get(`/stories/${id}/comments`),
+  addComment: (id, data) => request.post(`/stories/${id}/comments`, data)
 }
 
 export default api

@@ -66,11 +66,13 @@ function formatStoryDetail(story) {
     entryCount: story.entries.length,
     participantCount: story.participantCount,
     totalChars: story.totalChars,
+    commentCount: (story.comments || []).length,
     maxChars: MAX_CHARS_PER_STORY,
     maxParticipants: MAX_PARTICIPANTS,
     locked: story.locked,
     lockedReason: story.lockedReason,
-    entries: story.entries
+    entries: story.entries,
+    comments: story.comments || []
   };
 }
 
@@ -89,7 +91,8 @@ export function createStory({ title, content, author }) {
       content,
       order: 1,
       createdAt: now
-    }]
+    }],
+    comments: []
   };
   updateStoryStatus(story);
   data.stories[id] = story;
@@ -109,6 +112,7 @@ export function getAllStories() {
       entryCount: s.entries.length,
       participantCount: s.participantCount,
       totalChars: s.totalChars,
+      commentCount: (s.comments || []).length,
       locked: s.locked,
       lockedReason: s.lockedReason
     }));
@@ -179,6 +183,50 @@ export function resetStory(storyId) {
   updateStoryStatus(story);
   writeData(data);
   return { success: true, story: formatStoryDetail(story) };
+}
+
+export function addComment(storyId, { content, author }) {
+  const data = readData();
+  const story = data.stories[storyId];
+  if (!story) {
+    return { success: false, error: '故事不存在', code: 404 };
+  }
+  const contentLen = content?.trim()?.length || 0;
+  if (contentLen === 0) {
+    return { success: false, error: '评论内容不能为空', code: 400 };
+  }
+  if (!author || !author.trim()) {
+    return { success: false, error: '昵称不能为空', code: 400 };
+  }
+  if (contentLen > 500) {
+    return { success: false, error: '评论内容不能超过 500 字', code: 413 };
+  }
+  if (!story.comments) {
+    story.comments = [];
+  }
+  const now = Date.now();
+  const comment = {
+    id: generateId(),
+    author: author.trim(),
+    content: content.trim(),
+    createdAt: now
+  };
+  story.comments.push(comment);
+  story.updatedAt = now;
+  writeData(data);
+  return { success: true, comment, commentCount: story.comments.length };
+}
+
+export function getComments(storyId) {
+  const data = readData();
+  const story = data.stories[storyId];
+  if (!story) {
+    return { success: false, error: '故事不存在', code: 404 };
+  }
+  const comments = (story.comments || [])
+    .slice()
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return { success: true, comments, commentCount: comments.length };
 }
 
 export { MAX_PARTICIPANTS, MAX_CHARS_PER_STORY };

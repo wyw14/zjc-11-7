@@ -49,6 +49,12 @@
                 <span class="stat-max">/ {{ story.maxChars }}</span>
               </span>
             </div>
+            <div class="stat">
+              <span class="stat-label">读者评论</span>
+              <span class="stat-value">
+                <strong>{{ commentCount }}</strong> 条
+              </span>
+            </div>
           </div>
           <div class="progress-section">
             <div class="progress-label">
@@ -148,6 +154,72 @@
             </button>
           </div>
         </section>
+
+        <section class="comment-section card">
+          <h2 class="section-title">📝 读者评论（{{ commentCount }}）</h2>
+
+          <div class="comment-form">
+            <div class="form-row">
+              <div class="form-group comment-author-group">
+                <label>你的昵称</label>
+                <input
+                  v-model="commentForm.author"
+                  placeholder="请输入昵称..."
+                  maxlength="20"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>留言内容</label>
+              <textarea
+                v-model="commentForm.content"
+                placeholder="写下你对这篇故事的感想、建议或想说的话..."
+                rows="3"
+                maxlength="500"
+              ></textarea>
+              <div class="hint-row">
+                <span>{{ commentForm.content.length }} / 500 字</span>
+              </div>
+            </div>
+            <div v-if="commentError" class="error-text">{{ commentError }}</div>
+            <button
+              class="btn-primary"
+              :disabled="commentSubmitting || !canSubmitComment"
+              @click="handleSubmitComment"
+            >
+              {{ commentSubmitting ? '发布中...' : '发表评论' }}
+            </button>
+          </div>
+
+          <div class="comment-divider" v-if="comments.length > 0"></div>
+
+          <div v-if="comments.length === 0" class="empty-comments">
+            <div class="empty-icon-sm">💭</div>
+            <p>还没有评论，快来抢沙发吧~</p>
+          </div>
+
+          <div v-else class="comment-list">
+            <div
+              v-for="comment in comments"
+              :key="comment.id"
+              class="comment-item"
+            >
+              <div
+                class="comment-avatar"
+                :style="{ background: avatarColor(comment.author) }"
+              >
+                {{ comment.author.slice(0, 1) }}
+              </div>
+              <div class="comment-body">
+                <div class="comment-meta">
+                  <span class="comment-author">{{ comment.author }}</span>
+                  <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
+                </div>
+                <div class="comment-content">{{ comment.content }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
       </template>
     </div>
   </div>
@@ -170,6 +242,12 @@ const submitting = ref(false)
 const submitError = ref('')
 const form = ref({ author: '', content: '' })
 const chatListRef = ref(null)
+
+const comments = ref([])
+const commentCount = ref(0)
+const commentSubmitting = ref(false)
+const commentError = ref('')
+const commentForm = ref({ author: '', content: '' })
 
 const progressPct = computed(() => {
   if (!story.value) return 0
@@ -195,6 +273,14 @@ const canSubmit = computed(() => {
   )
 })
 
+const canSubmitComment = computed(() => {
+  return (
+    commentForm.value.author.trim().length > 0 &&
+    commentForm.value.content.trim().length > 0 &&
+    commentForm.value.content.length <= 500
+  )
+})
+
 const avatarColors = [
   '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6',
   '#8b5cf6', '#ef4444', '#14b8a6', '#f97316', '#06b6d4'
@@ -211,12 +297,57 @@ function avatarColor(name) {
 async function loadStory() {
   loading.value = true
   try {
-    story.value = await api.getStory(props.id || route.params.id)
+    const storyId = props.id || route.params.id
+    story.value = await api.getStory(storyId)
+    commentCount.value = story.value.commentCount || 0
+    await loadComments(storyId)
   } catch (e) {
     console.error(e)
     story.value = null
+    comments.value = []
+    commentCount.value = 0
   } finally {
     loading.value = false
+  }
+}
+
+async function loadComments(storyId) {
+  try {
+    const result = await api.getComments(storyId || props.id || route.params.id)
+    comments.value = result.comments || []
+    commentCount.value = result.commentCount ?? comments.value.length
+  } catch (e) {
+    console.error('加载评论失败:', e)
+    comments.value = []
+  }
+}
+
+async function handleSubmitComment() {
+  commentError.value = ''
+  if (!canSubmitComment.value) return
+  commentSubmitting.value = true
+  try {
+    const storyId = props.id || route.params.id
+    const result = await api.addComment(storyId, {
+      author: commentForm.value.author.trim(),
+      content: commentForm.value.content.trim()
+    })
+    comments.value.push(result.comment)
+    commentCount.value = result.commentCount ?? comments.value.length
+    commentForm.value.content = ''
+    await nextTick()
+    scrollToComments()
+  } catch (e) {
+    commentError.value = e.message
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+function scrollToComments() {
+  const el = document.querySelector('.comment-section')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 }
 
@@ -521,9 +652,110 @@ onMounted(loadStory)
   color: var(--primary);
 }
 
+.comment-section {
+  margin-bottom: 20px;
+}
+
+.comment-form {
+  margin-bottom: 8px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.comment-author-group {
+  flex: 1;
+  max-width: 280px;
+}
+
+.comment-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 24px 0 20px;
+}
+
+.empty-comments {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+}
+
+.empty-icon-sm {
+  font-size: 36px;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+.empty-comments p {
+  font-size: 14px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+}
+
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.comment-author {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.comment-time {
+  color: var(--text-muted);
+}
+
+.comment-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 640px) {
   .story-stats {
     grid-template-columns: 1fr;
+  }
+  .comment-author-group {
+    max-width: 100%;
   }
   .bubble-row {
     gap: 8px;

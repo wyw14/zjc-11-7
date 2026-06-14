@@ -6,6 +6,8 @@ import {
   getStoryById,
   addEntry,
   resetStory,
+  addComment,
+  getComments,
   MAX_PARTICIPANTS,
   MAX_CHARS_PER_STORY
 } from './storage.js';
@@ -108,6 +110,39 @@ app.post('/api/admin/stories/:id/reset', (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '重置故事失败' });
+  }
+});
+
+app.get('/api/stories/:id/comments', (req, res) => {
+  try {
+    const result = getComments(req.params.id);
+    if (!result.success) {
+      return res.status(result.code || 400).json({ error: result.error });
+    }
+    res.json({
+      comments: result.comments,
+      commentCount: result.commentCount
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '获取评论失败' });
+  }
+});
+
+app.post('/api/stories/:id/comments', (req, res) => {
+  try {
+    const { content, author } = req.body || {};
+    const result = addComment(req.params.id, { content, author });
+    if (!result.success) {
+      return res.status(result.code || 400).json({ error: result.error });
+    }
+    res.status(201).json({
+      comment: result.comment,
+      commentCount: result.commentCount
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '发布评论失败' });
   }
 });
 

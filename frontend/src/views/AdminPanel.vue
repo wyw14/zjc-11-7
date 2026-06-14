@@ -30,6 +30,7 @@
                   <th class="num-col">参与人数</th>
                   <th class="num-col">段数</th>
                   <th class="num-col">字数</th>
+                  <th class="num-col">评论数</th>
                   <th class="status-col">状态</th>
                   <th class="time-col">最后更新</th>
                   <th class="action-col">操作</th>
@@ -56,6 +57,11 @@
                       :class="['num-val', s.totalChars >= 5000 ? 'num-warn' : '']"
                     >
                       {{ s.totalChars }}/5000
+                    </span>
+                  </td>
+                  <td class="num-col">
+                    <span class="num-val comment-count">
+                      💬 {{ s.commentCount || 0 }}
                     </span>
                   </td>
                   <td class="status-col">
@@ -308,6 +314,11 @@ onMounted(loadStories)
 .num-warn {
   color: var(--error);
   font-weight: 600;
+}
+
+.comment-count {
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .time {
